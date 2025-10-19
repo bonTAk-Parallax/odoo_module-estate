@@ -17,13 +17,14 @@ class estate_property(models.Model):
      'CHECK(selling_price >= 0)',
      'The selling price must be positive!'),
 ]
+    _order = "id desc"
 
 
     name = fields.Char(default="Unknown", string="Title", required=True)
     description = fields.Text()
     postcode= fields.Char()
     date_availability = fields.Datetime("Available from", copy= False
-        , default=lambda self: datetime.now() + relativedelta(months=3))
+        , default=lambda self: datetime.now() + relativedelta(months=3), required=False)
     expected_price = fields.Float()
     selling_price = fields.Float(readonly=True, copy=False)
     bedroom = fields.Integer("Bedrooms", default=2)
@@ -32,6 +33,7 @@ class estate_property(models.Model):
     garage = fields.Boolean()
     garden = fields.Boolean()
     garden_area = fields.Integer()
+    sequence = fields.Integer(string="Sequence", default=1, help="Used to order property types. Lower is better.")
 
     total_area = fields.Integer(
         string="Total Area",
@@ -152,9 +154,18 @@ class estate_property_type(models.Model):
      'UNIQUE(name)',
      'The property type name must be unique!'),
 ]
+    _order = "name"
+    
 
 
     name = fields.Char(required=True)
+    property_ids = fields.One2many(
+        "estate.property",  
+        "property_type_id",  
+        string="Properties",
+    )
+    offer_ids = fields.One2many("estate.property.offer", "property_type_id", string="Offers")
+    offer_count = fields.Integer(string="Number of Offers", compute="_compute_offer_count")
 
 
 class estate_property_tag(models.Model):
@@ -165,9 +176,11 @@ class estate_property_tag(models.Model):
      'UNIQUE(name)',
      'The property tag name must be unique!'),
 ]
+    _order = "name"
 
 
     name = fields.Char(required=True)
+    color = fields.Integer(string="Color")
 
 
 class estate_property_offer(models.Model):
@@ -178,6 +191,7 @@ class estate_property_offer(models.Model):
      'CHECK(price > 0)',
      'The offer price must be strictly positive!'),
 ]
+    _order = "price desc"
 
 
     price = fields.Float()
@@ -241,4 +255,11 @@ class estate_property_offer(models.Model):
         for offer in self:
             if offer.status != 'accepted':
                 offer.status = 'refused'
+    
+    property_type_id = fields.Many2one(
+        "estate.property.type",
+        string="Property Type",
+        related="property_id.property_type_id",
+        store=True
+    )
 
